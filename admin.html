@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareSync | Administration Hub</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --bg-body: #f1f5f9;
+            --panel: #ffffff;
+            --text-dark: #1e293b;
+            --border: #cbd5e1;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        body { background: var(--bg-body); color: var(--text-dark); }
+        
+        .hidden { display: none !important; }
+
+        /* Auth Screen */
+        .login-screen { display: flex; height: 100vh; align-items: center; justify-content: center; padding: 20px; }
+        .login-card { background: var(--panel); padding: 40px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); width: 100%; max-width: 400px; border: 1px solid #e2e8f0; }
+        .login-card h2 { text-align: center; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: #475569; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.95rem; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+        .login-btn { width: 100%; background: var(--primary); color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .error-lbl { color: var(--danger); font-size: 0.85rem; margin-top: 5px; text-align: center; }
+
+        /* Dashboard Top navbar */
+        .dash-header { background: #0f172a; color: white; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+        .dash-header h1 { font-size: 1.1rem; }
+        .header-actions { display: flex; gap: 15px; align-items: center; }
+        .header-actions a { color: #94a3b8; text-decoration: none; font-size: 0.85rem; }
+        .header-actions a:hover { color: white; }
+        .logout-btn { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+
+        /* Dashboard Layout Grid */
+        .workspace { max-width: 1300px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr; gap: 30px; }
+        @media (min-width: 992px) { .workspace { grid-template-columns: 350px 1fr; } }
+
+        .editor-panel, .table-panel { background: var(--panel); padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 1.1rem; font-weight: bold; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; margin-bottom: 20px; }
+
+        .dual-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .action-row { display: flex; gap: 10px; margin-top: 20px; }
+        .save-btn { flex: 1; background: var(--success); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .cancel-btn { background: #e2e8f0; color: #475569; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; }
+
+        /* Roster Matrix Table View */
+        .table-scroll { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; min-width: 600px; }
+        th { background: #f8fafc; padding: 12px; font-weight: 600; border-bottom: 2px solid #e2e8f0; color: #64748b; font-size: 0.8rem; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        tr:hover td { background-color: #f8fafc; }
+
+        .btn-edit { color: var(--primary); border: 1px solid var(--primary); padding: 3px 8px; border-radius: 4px; background: none; cursor: pointer; font-size: 0.75rem; margin-right: 5px; }
+        .btn-edit:hover { background: #eff6ff; }
+        .btn-delete { color: var(--danger); border: 1px solid var(--danger); padding: 3px 8px; border-radius: 4px; background: none; cursor: pointer; font-size: 0.75rem; }
+        .btn-delete:hover { background: #fef2f2; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. AUTHENTICATION PROTECTION WINDOW INTERFACE -->
+    <div id="authContainer" class="login-screen">
+        <div class="login-card">
+            <h2>Admin Gateway</h2>
+            <form id="authForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="userInput" value="admin" required>
+                </div>
+                <div class="form-group">
+                    <label>Security Keyphrase</label>
+                    <input type="password" id="passInput" value="admin123" required>
+                </div>
+                <button type="submit" class="login-btn">Authenticate Connection</button>
+                <div id="authErr" class="error-lbl hidden">Invalid credentials access profile sequence.</div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. MANAGEMENT HUB ENVIRONMENT VIEW PANEL -->
+    <div id="dashboardContainer" class="hidden">
+        <header class="dash-header">
+            <h1>🔧 Roster Scheduling Engine</h1>
+            <div class="header-actions">
+                <a href="index.html" target="_blank">Open Public Board ↗</a>
+                <button class="logout-btn" onclick="terminateSession()">Lock Session</button>
+            </div>
+        </header>
+
+        <div class="workspace">
+            <!-- Left Side Data Capture Form Component -->
+            <div class="editor-panel">
+                <div class="panel-title" id="formHeader">Add New Assignment</div>
+                <form id="crudForm">
+                    <input type="hidden" id="recordId">
+                    <div class="form-group">
+                        <label>Doctor Full Name</label>
+                        <input type="text" id="formName" required placeholder="Dr. Jane Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>Specialty Department</label>
+                        <input type="text" id="formSpecialty" required placeholder="e.g. Dermatologist">
+                    </div>
+                    <div class="form-group">
+                        <label>Hospital Affiliation</label>
+                        <input type="text" id="formHospital" required placeholder="e.g. Northside General">
+                    </div>
+                    <div class="dual-inputs">
+                        <div class="form-group">
+                            <label>Room Number</label>
+                            <input type="text" id="formRoom" required placeholder="404">
+                        </div>
+                        <div class="form-group">
+                            <label>Day of Week</label>
+                            <select id="formDay">
+                                <option>Saturday</option><option>Sunday</option><option>Monday</option>
+                                <option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Target Shift Grid</label>
+                        <select id="formShift">
+                            <option>Morning</option>
+                            <option>Evening</option>
+                        </select>
+                    </div>
+                    <div class="dual-inputs">
+                        <div class="form-group">
+                            <label>Start Time</label>
+                            <input type="text" id="formStart" placeholder="08:00 AM" required>
+                        </div>
+                        <div class="form-group">
+                            <label>End Time</label>
+                            <input type="text" id="formEnd" placeholder="02:00 PM" required>
+                        </div>
+                    </div>
+                    <div class="action-row">
+                        <button type="button" id="cancelFormBtn" class="cancel-btn hidden" onclick="resetFormState()">Cancel</button>
+                        <button type="submit" class="save-btn">Commit Changes</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right Side Management Grid Matrix -->
+            <div class="table-panel">
+                <div class="panel-title">Active Registry Roster Logs</div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Physician/Department</th>
+                                <th>Facility Location</th>
+                                <th>Schedule Matrix</th>
+                                <th style="text-align: right;">Operations Management</th>
+                            </tr>
+                        </thead>
+                        <tbody id="managementTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let localRoster = [];
+
+        // Check authentication state on page render
+        document.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('isAuthorized') === 'true') {
+                displayDashboard();
+            }
+            
+            document.getElementById('authForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const u = document.getElementById('userInput').value;
+                const p = document.getElementById('passInput').value;
+                
+                // Hardcoded baseline access values requested for standard gateway verification matching
+                if (u === 'admin' && p === 'admin123') {
+                    sessionStorage.setItem('isAuthorized', 'true');
+                    displayDashboard();
+                } else {
+                    const err = document.getElementById('authErr');
+                    err.classList.remove('hidden');
+                }
+            });
+
+            document.getElementById('crudForm').addEventListener('submit', handleRecordSubmission);
+        });
+
+        function displayDashboard() {
+            document.getElementById('authContainer').classList.add('hidden');
+            document.getElementById('dashboardContainer').classList.remove('hidden');
+            loadAndRenderMatrix();
+        }
+
+        function terminateSession() {
+            sessionStorage.removeItem('isAuthorized');
+            window.location.reload();
+        }
+
+        function loadAndRenderMatrix() {
+            localRoster = JSON.parse(localStorage.getItem('doctor_roster')) || [];
+            const tbody = document.getElementById('managementTableBody');
+            
+            if(!localRoster.length) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:30px; color:#94a3b8;">System core registry records are currently empty.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = localRoster.map(doc => `
+                <tr>
+                    <td>
+                        <strong style="color:var(--text-dark);">${doc.name}</strong>
+                        <div style="font-size:0.75rem; color:var(--primary); font-weight:600;">${doc.specialty}</div>
+                    </td>
+                    <td>
+                        <div>${doc.hospital}</div>
+                        <div style="font-size:0.75rem; color:#64748b;">Room No: ${doc.roomNo}</div>
+                    </td>
+                    <td>
+                        <strong>${doc.day}</strong>
+                        <div style="font-size:0.75rem; color:#64748b;">${doc.shift} (${doc.startTime} - ${doc.endTime})</div>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <button class="btn-edit" onclick="bindEditTarget('${doc.id}')">Edit</button>
+                        <button class="btn-delete" onclick="executeDelete('${doc.id}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function handleRecordSubmission(e) {
+            e.preventDefault();
+            const recordId = document.getElementById('recordId').value;
+            
+            const payload = {
+                id: recordId || Date.now().toString(),
+                name: document.getElementById('formName').value.trim(),
+                specialty: document.getElementById('formSpecialty').value.trim(),
+                hospital: document.getElementById('formHospital').value.trim(),
+                roomNo: document.getElementById('formRoom').value.trim(),
+                day: document.getElementById('formDay').value,
+                shift: document.getElementById('formShift').value,
+                startTime: document.getElementById('formStart').value.trim(),
+                endTime: document.getElementById('formEnd').value.trim()
+            };
+
+            if (recordId) {
+                // Update operation
+                localRoster = localRoster.map(item => item.id === recordId ? payload : item);
+            } else {
+                // Create operation
+                localRoster.push(payload);
+            }
+
+            localStorage.setItem('doctor_roster', JSON.stringify(localRoster));
+            resetFormState();
+            loadAndRenderMatrix();
+        }
+
+        function bindEditTarget(id) {
+            const target = localRoster.find(item => item.id === id);
+            if(!target) return;
+
+            document.getElementById('recordId').value = target.id;
+            document.getElementById('formName').value = target.name;
+            document.getElementById('formSpecialty').value = target.specialty;
+            document.getElementById('formHospital').value = target.hospital;
+            document.getElementById('formRoom').value = target.roomNo;
+            document.getElementById('formDay').value = target.day;
+            document.getElementById('formShift').value = target.shift;
+            document.getElementById('formStart').value = target.startTime;
+            document.getElementById('formEnd').value = target.endTime;
+
+            document.getElementById('formHeader').textContent = "Modify Active Log Entry";
+            document.getElementById('cancelFormBtn').classList.remove('hidden');
+        }
+
+        function executeDelete(id) {
+            if(confirm('Are you sure you want to remove this data registry item?')) {
+                localRoster = localRoster.filter(item => item.id !== id);
+                localStorage.setItem('doctor_roster', JSON.stringify(localRoster));
+                loadAndRenderMatrix();
+                resetFormState();
+            }
+        }
+
+        function resetFormState() {
+            document.getElementById('crudForm').reset();
+            document.getElementById('recordId').value = '';
+            document.getElementById('formHeader').textContent = "Add New Assignment";
+            document.getElementById('cancelFormBtn').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
